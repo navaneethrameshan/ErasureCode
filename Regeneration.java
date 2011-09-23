@@ -167,12 +167,12 @@ public class Regeneration {
 		Integer[] temp = new Integer[BasisVector.VECTORSIZE];
 		for (int i=0; i<BasisVector.VECTORSIZE; i++){
 			temp[i]= generatedVector[i]^vector[i];
-			intermediate_gen_vector.add(temp);
 			System.out.print(temp[i]);
 		}
+		intermediate_gen_vector.add(temp);
 
 		/////////////////////store intermediate index
-		
+		//copy index_gen_vector to index_intermediate_gen_vector
 		Integer index_intermediate[] = new Integer[index_gen_vector.get(index).length + 1];
 
 		for(int k=0;k<index_gen_vector.get(index).length;k++){
