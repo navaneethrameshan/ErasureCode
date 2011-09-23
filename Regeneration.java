@@ -7,9 +7,13 @@ public class Regeneration {
 	int no_nodes_to_regenerate;
 
 	ArrayList<Integer[]> gen_vector;
+	ArrayList<Integer[]> index_gen_vector;
 	ArrayList<Integer[]> intermediate_gen_vector;
+	ArrayList<Integer[]> index_intermediate_gen_vector;
+	ArrayList<Integer[]> to_fetch;
 	ArrayList <Integer> mem_bit1;
 	ArrayList <Integer> mem_bit0;
+
 
 
 
@@ -18,7 +22,10 @@ public class Regeneration {
 		mem_bit1 = new ArrayList<Integer>();
 		mem_bit0 = new ArrayList<Integer>();	
 		gen_vector = new ArrayList<Integer[]>();
+		index_gen_vector = new ArrayList<Integer[]>();
 		intermediate_gen_vector = new ArrayList<Integer[]>();
+		index_intermediate_gen_vector = new ArrayList<Integer[]>();
+		to_fetch = new ArrayList<Integer[]>();
 
 	}
 
@@ -52,21 +59,19 @@ public class Regeneration {
 					findMatchFromGeneratingNodes(i,j);
 					boolean match = startXORComparison(i);
 
-					//Flush memory, XORed value stored in gen_vector
-					mem_bit0.clear();
-					mem_bit1.clear();
-
 					if(match){
-						gen_vector.clear();
+						//Flush memory, XORed value stored in gen_vector #IGNORE
 					}
 					else{
 						//insert intermediate logic here.
 						identifyIntermediate(i,j);
-						gen_vector.clear();
-						intermediate_gen_vector.clear();
-						
 					}
-
+					gen_vector.clear();
+					intermediate_gen_vector.clear();
+					mem_bit0.clear();
+					mem_bit1.clear();
+					index_gen_vector.clear();
+					index_intermediate_gen_vector.clear();
 					break;
 				}
 			}
@@ -85,33 +90,35 @@ public class Regeneration {
 			for (int i=0; i<gen_vector.size(); i++){		
 				if(gen_vector.get(i)[position] == 0){
 					//find vectors with value 1 at position.
-					if(findBasisVectorGivenPosition(1, position, gen_vector.get(i),failednode_part)){
+					if(findBasisVectorGivenPosition(1, position, gen_vector.get(i),failednode_part, i)){
 						return;
 					}
 				}
 
 				else{
 					//find vectors with value 0 at position.
-					if(findBasisVectorGivenPosition(0, position, gen_vector.get(i),failednode_part)){
+					if(findBasisVectorGivenPosition(0, position, gen_vector.get(i),failednode_part, i)){
 						return;
 					}
 				}
 			}
 			//Control here means, couldn't find in the first intermediate level.
 			//copy intermediate_gen_vector to gen_vector and flush gen_vector.
+			//copy index_intermediate_gen_vector to index_gen_vector and flush index_gen_vector
 			//update failednode_firstbit_position
-			
+
 			copyArrayList(gen_vector, intermediate_gen_vector);
+			copyArrayList(index_gen_vector, index_intermediate_gen_vector);
 			failednode_firstbit_position = k-1;
-			
-			
+
+
 		}
 	}
-	
+
 	public void copyArrayList(ArrayList<Integer[]> genVector, ArrayList<Integer[]> interGenVector ){
 		genVector.clear();
 		for (int i=0; i<interGenVector.size(); i++){
-				genVector.add(interGenVector.get(i));
+			genVector.add(interGenVector.get(i));
 		}
 		interGenVector.clear();
 	}
@@ -126,7 +133,7 @@ public class Regeneration {
 		return -1;
 	}
 
-	public boolean findBasisVectorGivenPosition(int value, int position, Integer[] generatedVector, int part){
+	public boolean findBasisVectorGivenPosition(int value, int position, Integer[] generatedVector, int part, int index){
 		for (int i=0; i< (no_nodes_to_regenerate); i++){
 			for(int j=0; j<BasisVector.PARTSPERNODE; j++){
 				for(int k =0; k< BasisVector.VECTORSIZE ;k++){
@@ -135,7 +142,7 @@ public class Regeneration {
 						printBasisVector(regen_from_nodes[i], j);
 						System.out.print(" with: ");
 						printGeneratedVector(generatedVector);
-						if(intermediateXOR(generatedVector, BasisVector.list[regen_from_nodes[i]][j],part)){
+						if(intermediateXOR(generatedVector, BasisVector.list[regen_from_nodes[i]][j],part,index, regen_from_nodes[i], j)){
 							return true;
 						}
 						System.out.println();
@@ -153,9 +160,9 @@ public class Regeneration {
 			System.out.print(generatedVector[i]);
 		}
 	}
-	
-	
-	public boolean intermediateXOR (Integer[] generatedVector, int[] vector, int part){
+
+
+	public boolean intermediateXOR (Integer[] generatedVector, int[] vector, int failed_part, int index, int node, int part){
 		System.out.print(" ----> ");
 		Integer[] temp = new Integer[BasisVector.VECTORSIZE];
 		for (int i=0; i<BasisVector.VECTORSIZE; i++){
@@ -163,13 +170,46 @@ public class Regeneration {
 			intermediate_gen_vector.add(temp);
 			System.out.print(temp[i]);
 		}
-		if(compareEqualityIntermediate(part, intermediate_gen_vector.get(intermediate_gen_vector.size()-1))){
+
+		/////////////////////store intermediate index
+		
+		Integer index_intermediate[] = new Integer[index_gen_vector.get(index).length + 1];
+
+		for(int k=0;k<index_gen_vector.get(index).length;k++){
+			index_intermediate[k] = index_gen_vector.get(index)[k];
+		}
+		index_intermediate[index_gen_vector.get(index).length] = node*10+part;
+		index_intermediate_gen_vector.add(index_intermediate);
+		//////////////////////////////////
+
+
+		if(compareEqualityIntermediate(failed_part, intermediate_gen_vector.get(intermediate_gen_vector.size()-1))){
+			// to get back the stored vectors in order to regenerate
+			
+			Integer[] temp1= new Integer[index_intermediate_gen_vector.get(index_intermediate_gen_vector.size()-1).length];
+			for(int k=0;k<index_intermediate_gen_vector.get(index_intermediate_gen_vector.size()-1).length;k++){
+				temp1[k] = index_intermediate_gen_vector.get(index_intermediate_gen_vector.size()-1)[k];
+			}
+			to_fetch.add(temp1);
+
 			return true;
 		}
 		else
 			return false;
 	}
 
+
+	public void printIndexArrayList(ArrayList<Integer[]> index_list ){
+		System.out.println("Index printing begin");
+		for (int i =0; i< index_list.size(); i++){
+			for( int j: index_list.get(i)){
+				printBasisVector(j/10, j%10);				
+				System.out.println();
+			}
+		}
+		System.out.println("Index printing end");
+
+	}
 
 	public boolean compareEqualityIntermediate(int part, Integer[] intermediateVector){
 		boolean match = true;
@@ -233,6 +273,10 @@ public class Regeneration {
 				printBasisVector(node2, part2);
 				performXOR(node1, part1, node2, part2);
 				if(compareEquality(part)){
+					Integer[] final_value = new Integer[2];
+					final_value[0] = mem_bit0.get(j);
+					final_value[1] = mem_bit1.get(i);
+					to_fetch.add(final_value);
 					found = true;
 					break;
 				}
@@ -276,10 +320,30 @@ public class Regeneration {
 	public void performXOR (int node1, int part1, int node2, int part2){
 		System.out.print(" ---> ");
 		Integer[] vector = new Integer[BasisVector.VECTORSIZE];
+		Integer[] index_track = new Integer[2];
 		for(int i =0; i< BasisVector.VECTORSIZE; i++){
-			vector[i] = (BasisVector.list[node1][part1][i])^(BasisVector.list[node2][part2][i]);
-			gen_vector.add(vector);
-			System.out.print(gen_vector.get(gen_vector.size()-1)[i]);
+			vector[i] = (BasisVector.list[node1][part1][i])^(BasisVector.list[node2][part2][i]);			
+			System.out.print(vector[i]);
+		}
+		gen_vector.add(vector);
+		index_track[0] = node1*10+part1;
+		index_track[1] = node2*10+part2;
+		index_gen_vector.add(index_track);
+	}
+
+	public void toFetchFinal()
+	{
+
+	}
+
+	public void printToFetchFinal(){
+		System.out.println("FINAL VALUES TO FETCH");
+		for (int i=0; i<to_fetch.size(); i++){
+			for(Integer j:to_fetch.get(i)){
+				printBasisVector(j/10, j%10);
+				System.out.println();
+			}
+			System.out.println("NEXT SET");
 		}
 	}
 
@@ -287,6 +351,7 @@ public class Regeneration {
 
 		Regeneration regenerate = new Regeneration();
 		regenerate.input();
+		regenerate.printToFetchFinal();
 
 	}
 
