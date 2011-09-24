@@ -1,6 +1,7 @@
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.util.ArrayList;
 
 
 public class FileManager {
@@ -143,17 +144,17 @@ public class FileManager {
 
 
 
-	public void reconstruct()
+	public void reconstruct(String path)
 	{
 		//System.out.println("Construct");
-		File f= new File(Parameters.outPutFilePathTest);
+		File f= new File(path);
 		File[] files=f.listFiles();
 
 		System.out.println("FILES: " +files.length);
 		//	for(int i=0; i< 4;i++)
 		//  files[i]  = new File("music.mp3.part"+i);
 
-		File ofile = new File("output.mp4");
+		File ofile = new File(path+ "output.mp4");
 		FileOutputStream fos;
 		FileInputStream fis;
 		byte[] fileBytes;
@@ -180,7 +181,7 @@ public class FileManager {
 		{}
 
 	}
-
+	
 
 	void xorWriteToFile(byte[][] data, int[] combination , String desDrName )
 	{
@@ -204,10 +205,11 @@ public class FileManager {
 
 		path = desDrName + "/partition." + comb;
 		byte[] xor = new byte[lastPartitionSize];	
-		System.out.println("XorFile bytechunkLength; " + lastPartitionSize);
+		//System.out.println("XorFile bytechunkLength; " + lastPartitionSize);
 		if(combination.length<=1)	
 		{
-			xor=data[combination[0]];
+			
+			xor=data[combination[0]]; 
 		}
 		else
 		{
@@ -290,6 +292,8 @@ public class FileManager {
 	byte[] xor2Files( byte[] chunk1 , byte[] chunk2 )
 	{
 		byte[] xor= new byte[ chunk1.length];
+		//	System.out.println("CHUNK1 length: "+chunk1.length);
+		//	System.out.println("CHUNK2 length: "+chunk2.length);
 		for(int i=0; i < chunk1.length ;i++)
 		{
 			xor[i]= (byte)(chunk1[i]^chunk2[i]);		
@@ -329,16 +333,109 @@ public class FileManager {
 		return path;
 	}
 
+///////Added////////////////////////////////////////////////////
+
+	String filePathFromPart(int node, int part)
+	{
+		//sort(combination);
+		String path="Node"+node+"/partition.";
+		for(int k=0,l=0; k<BasisVector.VECTORSIZE; k++){
+			if(BasisVector.list[node][part][k] == 1){
+				path+= k;
+			}
+		}
+		return path;
+	}
+
+
+	void fetchFromNodeToRegenerate(ArrayList<Integer[]> to_fetch, Integer failed_node){
+		byte[] p2 = new byte[lastPartitionSize];
+		int node=0, part=0;
+		for(int i =0; i<to_fetch.size(); i++){
+			for(int j=0;j<to_fetch.get(i).length; j++){
+				node = (to_fetch.get(i)[j])/10;
+				part = (to_fetch.get(i)[j])%10;
+				String path = filePathFromPart(node, part);
+				System.out.println("PATH:: " + path);
+				byte[] p1= readFileFrom(path);
+				p2 = xor2Files(p1, p2);
+				//P2 has the final reconstructed object!!
+			}
+			//get path to write file
+			String path = filePathFromPart(failed_node, part);
+			System.out.println("Write to Path: "+ path);
+			(new File("Node"+failed_node)).mkdir();
+			writeFileTo( p2, Parameters.outPutFilePathTest + path);
+
+			for(int k=0; k<lastPartitionSize;k++){
+				p2[k] =0;
+			}
+			System.out.println("-------");
+		}
+
+	}
+
+
+	void fetchFromNodeToReconstruct(ArrayList<Integer[]> to_fetch){   // YET to actually reconstruct
+		//get path to write file
+		String path1 = "Reconstruct";
+		if((new File(path1)).exists()){
+			deleteDir(new File(path1)); //added
+		}
+		(new File(path1)).mkdir();
+		
+		byte[] p2 = new byte[lastPartitionSize];
+		int node=0, part=0;
+		for(int i =0; i<to_fetch.size(); i++){
+			for(int j=0;j<to_fetch.get(i).length; j++){
+				node = (to_fetch.get(i)[j])/10;
+				part = (to_fetch.get(i)[j])%10;
+				String path = filePathFromPart(node, part);
+				System.out.println("FETCH PATH:: " + path);
+				byte[] p1= readFileFrom(path);
+				p2 = xor2Files(p1, p2);
+				//P2 has the final reconstructed object!!
+			}
+			writeFileTo( p2, Parameters.outPutFilePathTest + "Reconstruct/partition" + i);
+
+			for(int k=0; k<lastPartitionSize;k++){
+				p2[k] =0;
+			}
+			System.out.println("-------");
+		}
+		
+		reconstruct(Parameters.outPutFilePathTest + "Reconstruct/");
+		//reconstruct(Parameters.outPutFilePathTest + "test/");
+
+	}
+
+	public boolean deleteDir(File dir) {
+		if (dir.isDirectory()) {
+			String[] children = dir.list();
+			for (int i=0; i<children.length; i++) {
+				boolean success = deleteDir(new File(dir, children[i]));
+				if (!success) {
+					return false;
+				}
+			}
+		}
+
+		return dir.delete();
+	}
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	
 	public static void main(String[] args) 
 	{
+		ArrayList<Integer[]> to_fetch;
 		String fileName=Parameters.inputFilePath;
 		File inFile= new File(fileName); 
 		FileManager instance=new FileManager(); 
-		
+
 		//Added///
 		Regeneration regenerate = new Regeneration();
 		//Added///
-		
+
 		byte[][] k=instance.split1(inFile, Parameters.TotalPartitionNo);
 
 		String baseDirectoryName="Node", drName;
@@ -346,9 +443,9 @@ public class FileManager {
 		for(int i=0; i<Parameters.TotalNodeNo; i++)
 		{
 			drName=baseDirectoryName+i;
-			if((new File(drName)).exists())
-				(new File(drName)).delete();
-
+			if((new File(drName)).exists()){
+				instance.deleteDir(new File(drName)); //added
+			}
 			(new File(drName)).mkdir();
 
 
@@ -356,25 +453,37 @@ public class FileManager {
 
 			instance.xorWriteToFile(instance.byteChunk, Parameters.config[i][1] , drName );
 			//store the file
+		} 
+
+	
+		//Added///
+		regenerate.input();
+		if (!Regeneration.reconstruct){
+			regenerate.printToFetchFinal();
+			instance.fetchFromNodeToRegenerate(regenerate.toFetchFinal(), regenerate.failed_node);
 		}
 
+		else{
+			Reconstruct reconstruct = new Reconstruct();
+			reconstruct.input();
+			reconstruct.printToFetchFinal();
+			instance.fetchFromNodeToReconstruct(reconstruct.toFetchFinal());
+		}
 		//Added///
-	//	regenerate.input();
-		//Added///
-		
-		
 
-		/*
+
+/*
+		
 		//instance.reconstruct();
-		int[] i={0,1};
-		String path=instance.filePath(4, i);
+		int[] i={1,2};
+		String path=instance.filePath(0, i);
 		System.out.println("Path1 " + path);
 		byte[] p1=instance.readFileFrom(path);
 		System.out.println("P1 " + p1.length);
 
 
-		int[] j={0,1,3};
-		path=instance.filePath(2, j);
+		int[] j={1};
+		path=instance.filePath(1, j);
 		System.out.println("Path2 " + path);
 		byte[] p2=instance.readFileFrom(path);
 		System.out.println("P2 " + p2.length);
@@ -382,14 +491,10 @@ public class FileManager {
 
 		byte[] p3= instance.xor2Files( p1 , p2 );
 		System.out.println("P3 " + p3.length);
-		instance.writeFileTo( p3, Parameters.outPutFilePathTest + "/partition.3");
+		instance.writeFileTo( p3, Parameters.outPutFilePathTest + "check/partition.2");
 
-		readFileFrom(String path)
-		writeFileTo(byte[] data, String path)
-		xor2Files( byte[] chunk1 , byte[] chunk2 )
-		sort(int[] arr)
-		filePath(int node, int[] combination)
-	// */
+		instance.reconstruct(Parameters.outPutFilePathTest + "test/");
+	// */ 
 	}
 
 }

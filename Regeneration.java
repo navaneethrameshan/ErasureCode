@@ -1,3 +1,4 @@
+import java.io.File;
 import java.util.*;
 
 public class Regeneration {
@@ -5,6 +6,7 @@ public class Regeneration {
 	int regen_from_nodes[];
 	int failed_node;
 	int no_nodes_to_regenerate;
+	static boolean reconstruct=false;
 
 	ArrayList<Integer[]> gen_vector;
 	ArrayList<Integer[]> index_gen_vector;
@@ -29,29 +31,53 @@ public class Regeneration {
 
 	}
 
+	public boolean deleteDir(File dir) {
+		if (dir.isDirectory()) {
+			String[] children = dir.list();
+			for (int i=0; i<children.length; i++) {
+				boolean success = deleteDir(new File(dir, children[i]));
+				if (!success) {
+					return false;
+				}
+			}
+		}
+
+		// The directory is now empty so delete it
+		return dir.delete();
+	}
+
 	public void input(){
 		Scanner scanner = new Scanner(System.in);
-		System.out.println("Enter the node number to fail");
-		failed_node = scanner.nextInt();
+		System.out.println("Do you want to \n 1. Reconstruct whole file \n 2. Regenerate data on failed node. \n Press 1 or 2. ");
+		int choice = scanner.nextInt();
+		if(choice == 2){
+			System.out.println("Enter the node number to fail");
+			failed_node = scanner.nextInt();
+			deleteDir(new File("Node"+failed_node));
+		}
+		else{
+			reconstruct = true;
+			return;
+		}
+
 		System.out.println("How many nodes do you want to regenerate from? ");
 		no_nodes_to_regenerate = scanner.nextInt();
 		regen_from_nodes= new int [no_nodes_to_regenerate];
 		for(int i=0; i<no_nodes_to_regenerate;i++){
 			System.out.println(i+1+". Enter Node: ");
 			regen_from_nodes[i] = scanner.nextInt();
-			while(regen_from_nodes[i] == failed_node){
-				System.out.println("Node is already failed! Please enter another node.");
+			while(regen_from_nodes[i] == failed_node || regen_from_nodes[i]>4){
+				System.out.println("Input rejected!! Please enter another node.");
 				regen_from_nodes[i] = scanner.nextInt();
 			}
 		}	
 		identifyParts();
-
 		System.out.println("!!DONE!!");
 	}
 
 	public void identifyParts(){
 
-		for(int i=0; i<BasisVector.PARTSPERNODE; i++  ){
+		for(int i=0; i<(BasisVector.PARTSPERNODE); i++  ){
 			for(int j= 0; j< BasisVector.VECTORSIZE; j++ ){	
 				if (BasisVector.list[failed_node][i][j] == 1){
 					System.out.println("BitValue" +BasisVector.list[failed_node][i][j] + " [Failed node "+ failed_node +" ] Vector: " +i+ " at pos: " + (int)(j));
@@ -87,6 +113,10 @@ public class Regeneration {
 			System.out.println();
 			System.out.println("Beginning Intermediate Calculation");
 			int position = identifyNextBitPosition(failednode_part,failednode_firstbit_position);
+			if(position == -1){
+				System.out.println("NO SOLUTION!!");
+				break;
+			}
 			for (int i=0; i<gen_vector.size(); i++){		
 				if(gen_vector.get(i)[position] == 0){
 					//find vectors with value 1 at position.
@@ -185,7 +215,7 @@ public class Regeneration {
 
 		if(compareEqualityIntermediate(failed_part, intermediate_gen_vector.get(intermediate_gen_vector.size()-1))){
 			// to get back the stored vectors in order to regenerate
-			
+
 			Integer[] temp1= new Integer[index_intermediate_gen_vector.get(index_intermediate_gen_vector.size()-1).length];
 			for(int k=0;k<index_intermediate_gen_vector.get(index_intermediate_gen_vector.size()-1).length;k++){
 				temp1[k] = index_intermediate_gen_vector.get(index_intermediate_gen_vector.size()-1)[k];
@@ -331,9 +361,9 @@ public class Regeneration {
 		index_gen_vector.add(index_track);
 	}
 
-	public void toFetchFinal()
+	public ArrayList<Integer[]> toFetchFinal()
 	{
-
+		return to_fetch;
 	}
 
 	public void printToFetchFinal(){
@@ -341,18 +371,19 @@ public class Regeneration {
 		for (int i=0; i<to_fetch.size(); i++){
 			for(Integer j:to_fetch.get(i)){
 				printBasisVector(j/10, j%10);
+				//System.out.print("----> " + j);
 				System.out.println();
 			}
-			System.out.println("NEXT SET");
+			System.out.println("-------");
 		}
 	}
 
-	public static void main(String[] args){
+	/*	public static void main(String[] args){
 
 		Regeneration regenerate = new Regeneration();
 		regenerate.input();
 		regenerate.printToFetchFinal();
 
-	}
+	} */
 
 }
