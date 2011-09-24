@@ -339,6 +339,7 @@ public class Reconstruct {
 
 		return found;
 	}
+	
 
 	public boolean compareEquality(int part){
 		boolean match = true;

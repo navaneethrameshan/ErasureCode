@@ -7,6 +7,7 @@ public class Regeneration {
 	int failed_node;
 	int no_nodes_to_regenerate;
 	static boolean reconstruct=false;
+	
 
 	ArrayList<Integer[]> gen_vector;
 	ArrayList<Integer[]> index_gen_vector;

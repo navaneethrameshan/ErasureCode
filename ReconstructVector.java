@@ -1,5 +1,6 @@
 
 public class ReconstructVector {
+	
 	static final int PARTSPERNODE = 4;
 	static final int VECTORSIZE = 4;
 

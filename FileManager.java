@@ -6,6 +6,7 @@ import java.util.ArrayList;
 
 public class FileManager {
 
+	
 	private byte[][] byteChunk;
 	private int ordinaryPartitionSize;
 	private int lastPartitionSize;
@@ -141,7 +142,6 @@ public class FileManager {
 		return byteChunk ;
 
 	}
-
 
 
 	public void reconstruct(String path)
