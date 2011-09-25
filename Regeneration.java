@@ -7,7 +7,6 @@ public class Regeneration {
 	int failed_node;
 	int no_nodes_to_regenerate;
 	static boolean reconstruct=false;
-	
 
 	ArrayList<Integer[]> gen_vector;
 	ArrayList<Integer[]> index_gen_vector;
@@ -16,8 +15,7 @@ public class Regeneration {
 	ArrayList<Integer[]> to_fetch;
 	ArrayList <Integer> mem_bit1;
 	ArrayList <Integer> mem_bit0;
-
-
+	ArrayList<Integer> fallback_fetch;
 
 
 	public Regeneration() {
@@ -29,9 +27,21 @@ public class Regeneration {
 		intermediate_gen_vector = new ArrayList<Integer[]>();
 		index_intermediate_gen_vector = new ArrayList<Integer[]>();
 		to_fetch = new ArrayList<Integer[]>();
+		fallback_fetch = new ArrayList<Integer>();
 
 	}
 
+	public void clean(){
+		mem_bit1.clear();
+		mem_bit0.clear();
+		gen_vector.clear();
+		index_gen_vector.clear();
+		intermediate_gen_vector.clear();
+		index_intermediate_gen_vector.clear();
+		to_fetch.clear();
+		fallback_fetch.clear();
+		reconstruct = false;
+	}
 	public boolean deleteDir(File dir) {
 		if (dir.isDirectory()) {
 			String[] children = dir.list();
@@ -90,8 +100,34 @@ public class Regeneration {
 						//Flush memory, XORed value stored in gen_vector #IGNORE
 					}
 					else{
-						//insert intermediate logic here.
-						identifyIntermediate(i,j);
+						if(!identifyIntermediate(i,j)){
+							System.out.println();
+							System.out.println("FALLBACK MECHANISM");
+							boolean flag = false;
+							for(int k =0; k<no_nodes_to_regenerate;k++ ){
+								for(int l=0; l<BasisVector.PARTSPERNODE; l++){
+									Integer[] source = getSource(regen_from_nodes[k],l);
+									ArrayList<Integer[]> list = generateListFallback(regen_from_nodes[k],l);
+									if(fallBackIdentifyIntermediate(i, j, list, source)){
+										//Add source to the fall back list///
+										int nodepart = returnNodePartFromVector(source);
+										fallback_fetch.add(nodepart);
+										Integer[] final_fetch= convertIntegers(fallback_fetch);
+										to_fetch.add(final_fetch);
+										System.out.println("!!!!!Fall Back Success!!!!!!");
+										flag= true;
+										break;
+										///////////////////////////////////
+									}
+									System.out.println("((New Source))");
+								}
+								if(flag)
+									break;
+							}
+						}
+						else{
+							System.out.println("!!!!!Intermediate match!!!");
+						}
 					}
 					gen_vector.clear();
 					intermediate_gen_vector.clear();
@@ -99,6 +135,8 @@ public class Regeneration {
 					mem_bit1.clear();
 					index_gen_vector.clear();
 					index_intermediate_gen_vector.clear();
+					
+					fallback_fetch.clear();
 					break;
 				}
 			}
@@ -108,42 +146,170 @@ public class Regeneration {
 
 	}
 
+	
+	public static Integer[] convertIntegers(ArrayList<Integer> integers)
+	{
+	    Integer[] ret = new Integer[integers.size()];
+	    for (int i=0; i < ret.length; i++)
+	    {
+	        ret[i] = integers.get(i).intValue();
+	    }
+	    return ret;
+	}
 
-	public void identifyIntermediate (int failednode_part, int failednode_firstbit_position){
-		for (int k=failednode_firstbit_position+1; k<BasisVector.VECTORSIZE; k++){
+
+	public ArrayList<Integer[]> generateListFallback(int node, int part){
+		//System.out.println("LIST IS:: ");
+		ArrayList<Integer[]> list = new ArrayList<Integer[]>();
+		for( int i = 0; i<no_nodes_to_regenerate; i++){
+			for(int j=0; j<BasisVector.PARTSPERNODE;j++){
+				if(regen_from_nodes[i]!=node || j!=part){ //Avoid putting the first Vector to list. It remains as source
+					//System.out.print(" Inside ");
+					Integer temp[] = new Integer[BasisVector.VECTORSIZE];
+					for(int k=0; k<BasisVector.VECTORSIZE;k++){
+						temp[k] = Integer.valueOf(BasisVector.list[regen_from_nodes[i]][j][k]);
+						//	System.out.print(temp[k]);
+					}
+					list.add(temp);
+				}
+				//	System.out.print("<--->");
+			}
+		}
+
+		return list;
+	}
+
+	public Integer[] getSource(int node, int part){
+		Integer[] temp = new Integer[BasisVector.VECTORSIZE];  
+		for(int k=0; k<BasisVector.VECTORSIZE;k++){
+			temp[k] = Integer.valueOf(BasisVector.list[node][part][k]);
+		}
+		return temp;
+	}
+
+
+	public boolean identifyIntermediate (int failednode_part, int failednode_firstbit_position){
+		for (int k=failednode_firstbit_position; k<BasisVector.VECTORSIZE; k++){
 			System.out.println();
 			System.out.println("Beginning Intermediate Calculation");
-			int position = identifyNextBitPosition(failednode_part,failednode_firstbit_position);
+			int position = identifyNextBitPosition(failednode_part,k);
+			k= position;
 			if(position == -1){
-				System.out.println("NO SOLUTION!!");
+				System.out.println("No Solution by Optimistic approach");
 				break;
 			}
 			for (int i=0; i<gen_vector.size(); i++){		
 				if(gen_vector.get(i)[position] == 0){
 					//find vectors with value 1 at position.
 					if(findBasisVectorGivenPosition(1, position, gen_vector.get(i),failednode_part, i)){
-						return;
+						return true;
 					}
 				}
 
 				else{
 					//find vectors with value 0 at position.
 					if(findBasisVectorGivenPosition(0, position, gen_vector.get(i),failednode_part, i)){
-						return;
+						return true;
 					}
 				}
 			}
 			//Control here means, couldn't find in the first intermediate level.
 			//copy intermediate_gen_vector to gen_vector and flush gen_vector.
 			//copy index_intermediate_gen_vector to index_gen_vector and flush index_gen_vector
-			//update failednode_firstbit_position
 
 			copyArrayList(gen_vector, intermediate_gen_vector);
 			copyArrayList(index_gen_vector, index_intermediate_gen_vector);
-			failednode_firstbit_position = k-1;
 
 
 		}
+
+		return false;
+
+
+	}
+
+	public boolean fallBackIdentifyIntermediate(int failednode_part, int failednode_firstbit_position, ArrayList<Integer[]> list,Integer[] source ){
+		int node,part; 
+		if(list.size() == 0){
+			System.out.println("");
+			return false;
+		}
+		for(int i=0; i<list.size();i++){
+			System.out.println();
+			System.out.print("XORing: ");
+			Integer[] result = XORForFallBack(list.get(i), source);
+			/////TO print///////////////////////////
+			node = returnNodePartFromVector(list.get(i))/10;
+			 part= returnNodePartFromVector(list.get(i))%10;
+			printBasisVector( node,part);
+			System.out.print(" with ");
+			for (int k=0; k<BasisVector.VECTORSIZE;k++){
+				System.out.print(source[k]);
+			}
+			System.out.print(" ---> ");
+			for (int k=0; k<BasisVector.VECTORSIZE;k++){
+				System.out.print(result[k]);
+			}
+			///////////////////////////////////////////////
+			
+			if(compareEqualityIntermediate(failednode_part, result)){
+				//System.out.println("!!MATCH FOUND HERE!!");
+				int nodepart = returnNodePartFromVector(list.get(i));
+				//printBasisVector(nodepart/10, nodepart%10);
+				fallback_fetch.add(nodepart);
+				return true;
+			}
+			
+			//get all elements from the list except the element used to compute the XOR
+			ArrayList<Integer[]> newlist= getElementsExcept(list, i);
+
+			if(fallBackIdentifyIntermediate(failednode_part, failednode_firstbit_position, newlist, result)){
+				int nodepart = returnNodePartFromVector(list.get(i));
+				//printBasisVector(nodepart/10, nodepart%10);
+				fallback_fetch.add(nodepart);
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	public Integer returnNodePartFromVector(Integer[] vector){
+		boolean flag= true;
+		Integer value;
+		for(int i =0; i< BasisVector.TOTALNODES; i++){
+			for(int j=0; j<BasisVector.PARTSPERNODE; j++){
+				for(int k =0; k<BasisVector.VECTORSIZE;k++){
+					if (vector[k]!= BasisVector.list[i][j][k]){
+						flag =false;
+					}
+				}
+				if(flag){
+					value = i*10+j;
+					return value;
+				}
+				flag = true;
+			}
+		}
+		return -1;
+	}
+
+	public ArrayList<Integer[]> getElementsExcept(ArrayList<Integer[]> list, int position){
+		ArrayList<Integer[]> newlist = new ArrayList<Integer[]>();
+		for (int i=0;i<list.size();i++){
+			if(i!=position){
+				newlist.add(list.get(i));
+			}
+		}
+		return newlist;
+	}
+
+	public Integer[] XORForFallBack(Integer[] vector1, Integer[] vector2){
+		Integer[] result = new Integer[BasisVector.VECTORSIZE];
+		for(int i=0; i<vector1.length;i++){
+			result[i] = (vector1[i]^vector2[i]);
+		}
+		return result;
 	}
 
 	public void copyArrayList(ArrayList<Integer[]> genVector, ArrayList<Integer[]> interGenVector ){
@@ -251,7 +417,7 @@ public class Regeneration {
 		}
 
 		if (match){
-			System.out.print(" !!!INTERMEDIATE MATCH SUCCESS!!! ");
+		//	System.out.print(" !!!INTERMEDIATE MATCH SUCCESS!!! ");
 			return match;
 		}
 		else
@@ -378,13 +544,4 @@ public class Regeneration {
 			System.out.println("-------");
 		}
 	}
-
-	/*	public static void main(String[] args){
-
-		Regeneration regenerate = new Regeneration();
-		regenerate.input();
-		regenerate.printToFetchFinal();
-
-	} */
-
 }

@@ -1,12 +1,12 @@
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.util.ArrayList;
+import java.util.*;
 
 
 public class FileManager {
 
-	
+
 	private byte[][] byteChunk;
 	private int ordinaryPartitionSize;
 	private int lastPartitionSize;
@@ -109,7 +109,7 @@ public class FileManager {
 				{
 					readLength = fileSize;
 				}
-				//System.out.println(" readlength " + readLength + " Ind: " +index + "bytesize "+byteChunk[index].length);
+				//	System.out.println(" readlength " + readLength + " Ind: " +index + "bytesize "+byteChunk[index].length);
 				// byteChunk = new byte[readLength];
 				read = fInputStream.read(byteChunk[index], 0, readLength);
 				// System.out.println("checkpoint ind " + index + " ReadSize " + read);
@@ -181,7 +181,7 @@ public class FileManager {
 		{}
 
 	}
-	
+
 
 	void xorWriteToFile(byte[][] data, int[] combination , String desDrName )
 	{
@@ -208,7 +208,7 @@ public class FileManager {
 		//System.out.println("XorFile bytechunkLength; " + lastPartitionSize);
 		if(combination.length<=1)	
 		{
-			
+
 			xor=data[combination[0]]; 
 		}
 		else
@@ -289,6 +289,28 @@ public class FileManager {
 
 	}
 
+	void writeFileTo(byte[] data, String path,  int size)
+	{
+
+		try
+		{
+			File file = new File(path);
+			FileOutputStream fos = new FileOutputStream(file);
+
+			//data=new byte[(int)file.length()];
+
+			fos.write(data, 0, size);
+			fos.flush();
+			fos.close();
+			fos = null;
+
+
+		}catch(Exception e)
+		{}
+
+
+	}
+
 	byte[] xor2Files( byte[] chunk1 , byte[] chunk2 )
 	{
 		byte[] xor= new byte[ chunk1.length];
@@ -333,7 +355,7 @@ public class FileManager {
 		return path;
 	}
 
-///////Added////////////////////////////////////////////////////
+	///////Added////////////////////////////////////////////////////
 
 	String filePathFromPart(int node, int part)
 	{
@@ -362,10 +384,10 @@ public class FileManager {
 				//P2 has the final reconstructed object!!
 			}
 			//get path to write file
-			String path = filePathFromPart(failed_node, part);
-			System.out.println("Write to Path: "+ path);
+			String path1 = filePathFromPart(failed_node, i);
+			System.out.println("Write to Path: "+ path1);
 			(new File("Node"+failed_node)).mkdir();
-			writeFileTo( p2, Parameters.outPutFilePathTest + path);
+			writeFileTo( p2, Parameters.outPutFilePathTest + path1);
 
 			for(int k=0; k<lastPartitionSize;k++){
 				p2[k] =0;
@@ -383,7 +405,7 @@ public class FileManager {
 			deleteDir(new File(path1)); //added
 		}
 		(new File(path1)).mkdir();
-		
+
 		byte[] p2 = new byte[lastPartitionSize];
 		int node=0, part=0;
 		for(int i =0; i<to_fetch.size(); i++){
@@ -396,14 +418,20 @@ public class FileManager {
 				p2 = xor2Files(p1, p2);
 				//P2 has the final reconstructed object!!
 			}
-			writeFileTo( p2, Parameters.outPutFilePathTest + "Reconstruct/partition" + i);
+			int size=ordinaryPartitionSize;
+			if(i==3)
+				size=lastPartitionSize;
+			else
+				size=ordinaryPartitionSize;
+
+			writeFileTo( p2, Parameters.outPutFilePathTest + "Reconstruct/partition" + i,size);
 
 			for(int k=0; k<lastPartitionSize;k++){
 				p2[k] =0;
 			}
 			System.out.println("-------");
 		}
-		
+
 		reconstruct(Parameters.outPutFilePathTest + "Reconstruct/");
 		//reconstruct(Parameters.outPutFilePathTest + "test/");
 
@@ -423,10 +451,12 @@ public class FileManager {
 		return dir.delete();
 	}
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	
-	
+
+
 	public static void main(String[] args) 
 	{
+		String input;
+		Scanner scanner = new Scanner(System.in);
 		ArrayList<Integer[]> to_fetch;
 		String fileName=Parameters.inputFilePath;
 		File inFile= new File(fileName); 
@@ -434,7 +464,9 @@ public class FileManager {
 
 		//Added///
 		Regeneration regenerate = new Regeneration();
+		Reconstruct reconstruct = new Reconstruct();
 		//Added///
+		System.out.println("Splitting and storing the files in progress...");
 
 		byte[][] k=instance.split1(inFile, Parameters.TotalPartitionNo);
 
@@ -455,46 +487,28 @@ public class FileManager {
 			//store the file
 		} 
 
-	
+
 		//Added///
-		regenerate.input();
-		if (!Regeneration.reconstruct){
-			regenerate.printToFetchFinal();
-			instance.fetchFromNodeToRegenerate(regenerate.toFetchFinal(), regenerate.failed_node);
-		}
+		do{
+			regenerate.clean();
+			regenerate.input();
+			if (!Regeneration.reconstruct){
+				regenerate.printToFetchFinal();
+				instance.fetchFromNodeToRegenerate(regenerate.toFetchFinal(), regenerate.failed_node);
 
-		else{
-			Reconstruct reconstruct = new Reconstruct();
-			reconstruct.input();
-			reconstruct.printToFetchFinal();
-			instance.fetchFromNodeToReconstruct(reconstruct.toFetchFinal());
+			}
+
+			else{
+				reconstruct.clean();
+				reconstruct.input();
+				reconstruct.printToFetchFinal();
+				instance.fetchFromNodeToReconstruct(reconstruct.toFetchFinal());
+			}
+			System.out.println("Do you want to perform more operations? ");
+			input = scanner.next();
 		}
+		while(input.equals("y"));
 		//Added///
-
-
-/*
-		
-		//instance.reconstruct();
-		int[] i={1,2};
-		String path=instance.filePath(0, i);
-		System.out.println("Path1 " + path);
-		byte[] p1=instance.readFileFrom(path);
-		System.out.println("P1 " + p1.length);
-
-
-		int[] j={1};
-		path=instance.filePath(1, j);
-		System.out.println("Path2 " + path);
-		byte[] p2=instance.readFileFrom(path);
-		System.out.println("P2 " + p2.length);
-
-
-		byte[] p3= instance.xor2Files( p1 , p2 );
-		System.out.println("P3 " + p3.length);
-		instance.writeFileTo( p3, Parameters.outPutFilePathTest + "check/partition.2");
-
-		instance.reconstruct(Parameters.outPutFilePathTest + "test/");
-	// */ 
 	}
 
 }
