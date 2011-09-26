@@ -60,8 +60,6 @@ public class FileManager {
 			e.printStackTrace();
 		}
 
-		//return byteChunk ;
-
 	}
 
 
@@ -86,16 +84,7 @@ public class FileManager {
 
 		for(int i=0; i<noPartitions; i++)
 		{
-			//if(i<noPartitions-1)
-			//byteChunk[i]=new byte[partitionSize];
-			//else
 			byteChunk[i]=new byte[partitionSize + fileSize%partitionSize];
-		}
-
-		for(int i=0; i<noPartitions; i++)
-		{
-			//System.out.println(i + " " + byteChunk[i].length );
-
 		}
 
 		try 
@@ -104,28 +93,19 @@ public class FileManager {
 
 			while (fileSize > 0) 
 			{
-				//System.out.println("startloop " + index);
 				if (fileSize < 2*partitionSize) 
 				{
 					readLength = fileSize;
 				}
-				//	System.out.println(" readlength " + readLength + " Ind: " +index + "bytesize "+byteChunk[index].length);
-				// byteChunk = new byte[readLength];
 				read = fInputStream.read(byteChunk[index], 0, readLength);
-				// System.out.println("checkpoint ind " + index + " ReadSize " + read);
 				fileSize -= read;
-				//  offset+=read;
-				// assert(read==byteChunk[index].length);
 				partitionNumber++;
 				newName = inputFile.getName() + ".part" + Integer.toString(partitionNumber - 1);
 				partition = new FileOutputStream(new File(Parameters.outPutFilePath+newName));
 				partition.write(byteChunk[index], 0, read);
-				//System.out.println("Split1 " + read);
 				partition.flush();
 				partition.close();
-				// byteChunk = null;
 				partition = null;
-				//System.out.println("endloop " + index);
 				index++;
 
 
@@ -146,13 +126,10 @@ public class FileManager {
 
 	public void reconstruct(String path)
 	{
-		//System.out.println("Construct");
 		File f= new File(path);
 		File[] files=f.listFiles();
 
 		System.out.println("FILES: " +files.length);
-		//	for(int i=0; i< 4;i++)
-		//  files[i]  = new File("music.mp3.part"+i);
 
 		File ofile = new File(path+ "output.mp4");
 		FileOutputStream fos;
@@ -167,8 +144,6 @@ public class FileManager {
 				fileBytes = new byte[(int) file.length()];
 				bytesRead = fis.read(fileBytes, 0,(int) file.length());
 				System.out.println("Reconstruct Read " + file.length());
-				// assert(bytesRead == fileBytes.length);
-				//assert(bytesRead == (int) file.length());
 				fos.write(fileBytes);
 				fos.flush();
 				fileBytes = null;
@@ -231,7 +206,6 @@ public class FileManager {
 
 
 			fos.write(xor);
-			//System.out.println("XorFile xorFinal; " + xor.length);
 			fos.flush();
 			xor = null;
 
@@ -275,7 +249,6 @@ public class FileManager {
 			File file = new File(path);
 			FileOutputStream fos = new FileOutputStream(file);
 
-			//data=new byte[(int)file.length()];
 
 			fos.write(data);
 			fos.flush();
@@ -297,7 +270,6 @@ public class FileManager {
 			File file = new File(path);
 			FileOutputStream fos = new FileOutputStream(file);
 
-			//data=new byte[(int)file.length()];
 
 			fos.write(data, 0, size);
 			fos.flush();
@@ -314,8 +286,6 @@ public class FileManager {
 	byte[] xor2Files( byte[] chunk1 , byte[] chunk2 )
 	{
 		byte[] xor= new byte[ chunk1.length];
-		//	System.out.println("CHUNK1 length: "+chunk1.length);
-		//	System.out.println("CHUNK2 length: "+chunk2.length);
 		for(int i=0; i < chunk1.length ;i++)
 		{
 			xor[i]= (byte)(chunk1[i]^chunk2[i]);		
@@ -345,11 +315,9 @@ public class FileManager {
 
 	String filePath(int node, int[] combination)
 	{
-		//sort(combination);
 		String path="Node"+node+"/partition.";
 		for(int i=0;i< combination.length; i++)
 		{
-			//System.out.print("aaaaa"+ combination[i]);
 			path+=combination[i];
 		}
 		return path;
@@ -359,7 +327,6 @@ public class FileManager {
 
 	String filePathFromPart(int node, int part)
 	{
-		//sort(combination);
 		String path="Node"+node+"/partition.";
 		for(int k=0,l=0; k<BasisVector.VECTORSIZE; k++){
 			if(BasisVector.list[node][part][k] == 1){
@@ -387,7 +354,7 @@ public class FileManager {
 			String path1 = filePathFromPart(failed_node, i);
 			System.out.println("Write to Path: "+ path1);
 			(new File("Node"+failed_node)).mkdir();
-			writeFileTo( p2, Parameters.outPutFilePathTest + path1);
+			writeFileTo( p2, Parameters.outPutFilePathRegenerate + path1);
 
 			for(int k=0; k<lastPartitionSize;k++){
 				p2[k] =0;
@@ -402,7 +369,7 @@ public class FileManager {
 		//get path to write file
 		String path1 = "Reconstruct";
 		if((new File(path1)).exists()){
-			deleteDir(new File(path1)); //added
+			deleteDir(new File(path1)); 
 		}
 		(new File(path1)).mkdir();
 
@@ -424,7 +391,7 @@ public class FileManager {
 			else
 				size=ordinaryPartitionSize;
 
-			writeFileTo( p2, Parameters.outPutFilePathTest + "Reconstruct/partition" + i,size);
+			writeFileTo( p2, Parameters.outPutFilePathRegenerate + "Reconstruct/partition" + i,size);
 
 			for(int k=0; k<lastPartitionSize;k++){
 				p2[k] =0;
@@ -432,8 +399,7 @@ public class FileManager {
 			System.out.println("-------");
 		}
 
-		reconstruct(Parameters.outPutFilePathTest + "Reconstruct/");
-		//reconstruct(Parameters.outPutFilePathTest + "test/");
+		reconstruct(Parameters.outPutFilePathRegenerate + "Reconstruct/");
 
 	}
 

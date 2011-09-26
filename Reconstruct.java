@@ -46,6 +46,10 @@ public class Reconstruct {
 		Scanner scanner = new Scanner(System.in);
 		System.out.println("How many nodes do you want to regenerate from? ");
 		no_nodes_to_regenerate = scanner.nextInt();
+		while(no_nodes_to_regenerate<2){
+			System.out.println("Input rejected!! Atleast 2 nodes are required.");
+			no_nodes_to_regenerate = scanner.nextInt();
+		}
 		regen_from_nodes= new int [no_nodes_to_regenerate];
 		for(int i=0; i<no_nodes_to_regenerate;i++){
 			System.out.println(i+1+". Enter Node: ");
