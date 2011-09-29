@@ -1,0 +1,4 @@
+Edit parameters.java to set the 
+inputFilePath to path of the media.
+outputFilePath to where you want to store the split files.
+and outFilePathRegenerate to where you want to generate the reconstructed file.
